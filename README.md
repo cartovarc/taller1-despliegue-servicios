@@ -8,6 +8,51 @@ empaqueta en un **contenedor Docker**, se publica en **Docker Hub** y se
 despliega en una **máquina virtual EC2 (Ubuntu) de AWS**, accesible desde
 cualquier parte del mundo por HTTP.
 
+**Demostración:** http://ec2-18-188-109-26.us-east-2.compute.amazonaws.com
+· **Imagen:** [`cartovarc/stock-market:2.0`](https://hub.docker.com/r/cartovarc/stock-market)
+· **Evidencias:** [ver capturas](#5-evidencia)
+
+## De proceso a servicio de red
+
+Un **proceso** es un programa en ejecución: tiene su propio espacio de memoria,
+sus recursos (archivos abiertos, hilos) y es administrado por el sistema
+operativo. El script `read_value_yf.py` ejecutado desde la consola es un proceso:
+recibe argumentos, hace su trabajo, imprime el resultado y termina. Solo quien
+está en la misma máquina puede usarlo.
+
+Ese proceso se convierte en un **servicio de red** cuando, en lugar de terminar,
+queda **escuchando en un puerto** (un *socket* TCP) y atiende peticiones que
+llegan a través de la red siguiendo un protocolo acordado (aquí **HTTP**).
+Flask hace exactamente eso: asocia funciones de Python a rutas HTTP
+(`@app.route("/")`) y el servidor (gunicorn) mantiene el proceso vivo en el
+puerto 5000 esperando clientes. Cualquier cliente —un navegador o otro
+programa— que conozca la dirección y el puerto puede pedirle que ejecute la tarea.
+
+```
+ (a) Proceso local                          (b) Servicio de red
+ ─────────────────                          ───────────────────
+ Usuario                                    Cliente (navegador / programa)
+   │ python3 read_value_yf.py AMZN             │  GET /stock/AMZN  (HTTP)
+   ▼                                           ▼
+ ┌──────────────────────┐                   ═══════ Red / Internet ═══════
+ │ Proceso              │                      │
+ │  read_value_yf.py    │                      ▼  puerto 80 (EC2) → 5000 (contenedor)
+ │  - memoria, CPU      │                   ┌──────────────────────────────────┐
+ │  - stdin / stdout    │                   │ Proceso servidor (gunicorn+Flask)│
+ └─────────┬────────────┘                   │  escucha en 0.0.0.0:5000 (socket)│
+           │ imprime y termina              │  ruta "/stock/<ticker>"          │
+           ▼                                │      └─► read_value_yf.py        │
+ Resultado en la consola                    └───────────────┬──────────────────┘
+                                                            │ responde HTML (200 OK)
+                                                            ▼
+                                            Cliente recibe la tabla y el promedio
+                                            (el proceso sigue vivo esperando más)
+```
+
+Al empaquetarlo en un **contenedor Docker**, el proceso servidor viaja junto con
+sus librerías (Flask, yfinance, pandas) y se ejecuta igual en cualquier máquina
+con Docker, como la EC2 de AWS.
+
 ## Arquitectura
 
 ```
@@ -76,6 +121,9 @@ docker container run --rm --name stock-market -p 5000:5000 stock-market:2.0
 
 Abrir http://localhost:5000
 
+> **macOS:** el puerto 5000 lo usa el *Receptor AirPlay*. Si aparece
+> `address already in use`, usar `-p 5001:5000` y abrir http://localhost:5001.
+
 ## 3. Publicación en Docker Hub
 
 > **Importante en Mac con chip Apple (M1/M2/M3/M4):** la imagen debe
@@ -84,11 +132,11 @@ Abrir http://localhost:5000
 
 ```bash
 docker login
-docker buildx build --platform linux/amd64 -t <usuario_dockerhub>/stock-market:2.0 --push .
+docker buildx build --platform linux/amd64 -t cartovarc/stock-market:2.0 --push .
 ```
 
-(En un equipo Intel/AMD basta con `docker image tag stock-market:2.0 <usuario_dockerhub>/stock-market:2.0`
-y `docker image push <usuario_dockerhub>/stock-market:2.0`, como indica el taller.)
+(En un equipo Intel/AMD basta con `docker image tag stock-market:2.0 cartovarc/stock-market:2.0`
+y `docker image push cartovarc/stock-market:2.0`, como indica el taller.)
 
 ## 4. Despliegue en AWS EC2
 
@@ -108,8 +156,8 @@ y `docker image push <usuario_dockerhub>/stock-market:2.0`, como indica el talle
    descargar y ejecutar el contenedor):
 
    ```bash
-   curl -fsSLO https://raw.githubusercontent.com/<usuario_github>/<repositorio>/main/scripts/setup_ec2.sh
-   bash setup_ec2.sh <usuario_dockerhub>
+   curl -fsSLO https://raw.githubusercontent.com/cartovarc/taller1-despliegue-servicios/main/scripts/setup_ec2.sh
+   bash setup_ec2.sh cartovarc
    ```
 
    El contenedor queda publicado en el puerto **80** del host (`-p 80:5000`).
@@ -118,7 +166,16 @@ y `docker image push <usuario_dockerhub>/stock-market:2.0`, como indica el talle
 
 ## 5. Evidencia
 
-Capturas del servicio funcionando en la nube en [`evidencias/`](evidencias/).
+Servicio desplegado en una EC2 Ubuntu (us-east-2) y accesible públicamente en
+http://ec2-18-188-109-26.us-east-2.compute.amazonaws.com
+
+**`/` – GOOGL desde 2020-01-01 (valor promedio de cierre 159.55)**
+
+![Servicio en AWS - GOOGL](evidencias/googl.png)
+
+**`/stock/AMZN` – AMZN desde 2020-01-01 (valor promedio de cierre 168.95)**
+
+![Servicio en AWS - AMZN](evidencias/amzn.png)
 
 ## 6. Apagar la máquina virtual (MUY IMPORTANTE)
 
