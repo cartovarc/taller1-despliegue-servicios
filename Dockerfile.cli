@@ -1,0 +1,14 @@
+# Imagen de la primera parte del taller (stock-market:1.0):
+# ejecuta el script por linea de comandos y termina.
+FROM python:3.11-slim
+
+WORKDIR /work
+
+ENV STOCK=GOOGL
+
+COPY requirements.txt requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+CMD ["sh", "-c", "python3 read_value_yf.py ${STOCK}"]

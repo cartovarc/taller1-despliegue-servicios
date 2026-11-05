@@ -1,0 +1,11 @@
+# Llaves y credenciales (NUNCA subir)
+*.pem
+.env
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Sistema
+.DS_Store
