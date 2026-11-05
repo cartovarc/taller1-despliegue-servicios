@@ -169,13 +169,13 @@ y `docker image push cartovarc/stock-market:2.0`, como indica el taller.)
 Servicio desplegado en una EC2 Ubuntu (us-east-2) y accesible públicamente en
 http://ec2-18-188-109-26.us-east-2.compute.amazonaws.com
 
-**`/` – GOOGL desde 2020-01-01 (valor promedio de cierre 159.55)**
+**`/stock/GOOGL` – GOOGL desde 2020-01-01 (valor promedio de cierre 159.55)**
 
-![Servicio en AWS - GOOGL](evidencias/googl.png)
+![Servicio en AWS - GOOGL](evidencias/googl.jpeg)
 
 **`/stock/AMZN` – AMZN desde 2020-01-01 (valor promedio de cierre 168.95)**
 
-![Servicio en AWS - AMZN](evidencias/amzn.png)
+![Servicio en AWS - AMZN](evidencias/amzn.jpeg)
 
 ## 6. Apagar la máquina virtual (MUY IMPORTANTE)
 
